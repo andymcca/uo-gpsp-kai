@@ -2878,7 +2878,13 @@ u32 translation_flush_count = 0;
       if(translation_recursion_level == 0)                                    \
       {                                                                       \
         char buffer[256];                                                     \
-        u16 *current_screen = copy_screen(); \
+        static u16 dump_snap_fb[240 * 160];                                   \
+        u16 *current_screen = copy_screen();                                  \
+        if(current_screen == NULL)                                            \
+        {                                                                     \
+          copy_screen_snapshot_to(dump_snap_fb);                                \
+          current_screen = dump_snap_fb;                                      \
+        }                                                                     \
         save_state("dump", current_screen, 0);\
         video_resolution(FRAME_MENU);                                         \
         sprintf(buffer, "bad jump %x (%x)\n", (int)pc, (int)reg[REG_PC]);     \

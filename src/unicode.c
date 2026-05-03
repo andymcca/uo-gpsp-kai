@@ -20,7 +20,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <sys/unistd.h>
 
 #define ERR		(0)
 
@@ -1808,8 +1807,14 @@ int sjis_to_utf16le(const void *sjis_text, void *buf)
 int sjis_to_utf16be(const void *sjis_text, void *buf)
 {
 	int len = sjis_to_utf16le(sjis_text, buf);
+	unsigned char *p = (unsigned char *)buf;
+	int i;
 
-	swab((unsigned char *)buf, (unsigned char *)buf, len);
+	for (i = 0; i + 1 < len; i += 2) {
+		unsigned char t = p[i];
+		p[i] = p[i + 1];
+		p[i + 1] = t;
+	}
 
 	return len;
 }

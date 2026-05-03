@@ -92,6 +92,7 @@ extern u32 tilt_sensor_x;
 extern u32 tilt_sensor_y;
 extern u32 sensorR;
 extern u32 gamepad_config_map[MAX_GAMEPAD_CONFIG_MAP];
+extern u32 button_psp_mask_to_config[MAX_GAMEPAD_CONFIG_MAP];
 
 #endif
 

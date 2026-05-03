@@ -280,6 +280,7 @@ static void get_timestamp_string(char *buffer, u16 msg_id, u16 year, u16 mon, u1
 static void save_ss_bmp(u16 *image);
 void _flush_cache();
 void button_up_wait();
+static void button_up_wait_menu(void);
 void init_gpsp_config();
 
 static int sort_function(const void *dest_str_ptr, const void *src_str_ptr)
@@ -462,9 +463,9 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
     if(num_files == 0)
       current_column = 1;
 
-  clear_screen(COLOR_BG);
+  clear_screen_menu(COLOR_BG);
   flip_screen();
-  clear_screen(COLOR_BG);
+  clear_screen_menu(COLOR_BG);
   {
     while(repeat)
     {
@@ -480,7 +481,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
               current_file_selection++;
               if(current_file_in_scroll == (FILE_LIST_ROWS - CURRENT_DIR_ROWS - 1))
               {
-                clear_screen(COLOR_BG);
+                clear_screen_menu(COLOR_BG);
                 current_file_scroll_value++;
               }
               else
@@ -496,7 +497,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
               current_dir_selection++;
               if(current_dir_in_scroll == (FILE_LIST_ROWS - CURRENT_DIR_ROWS - 1))
               {
-                clear_screen(COLOR_BG);
+                clear_screen_menu(COLOR_BG);
                 current_dir_scroll_value++;
               }
               else
@@ -518,7 +519,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
                 current_file_selection += PAGE_SCROLL_NUM;
                 if(current_file_in_scroll >= (FILE_LIST_ROWS - CURRENT_DIR_ROWS - PAGE_SCROLL_NUM))
                 {
-                  clear_screen(COLOR_BG);
+                  clear_screen_menu(COLOR_BG);
                   current_file_scroll_value += PAGE_SCROLL_NUM;
                 }
                 else
@@ -537,7 +538,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
                 current_dir_selection += PAGE_SCROLL_NUM;
                 if(current_dir_in_scroll >= (FILE_LIST_ROWS - CURRENT_DIR_ROWS - PAGE_SCROLL_NUM))
                 {
-                  clear_screen(COLOR_BG);
+                  clear_screen_menu(COLOR_BG);
                   current_dir_scroll_value += PAGE_SCROLL_NUM;
                 }
                 else
@@ -557,7 +558,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
               current_file_selection--;
               if(current_file_in_scroll == 0)
               {
-                clear_screen(COLOR_BG);
+                clear_screen_menu(COLOR_BG);
                 current_file_scroll_value--;
               }
               else
@@ -573,7 +574,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
               current_dir_selection--;
               if(current_dir_in_scroll == 0)
               {
-                clear_screen(COLOR_BG);
+                clear_screen_menu(COLOR_BG);
                 current_dir_scroll_value--;
               }
               else
@@ -592,7 +593,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
               current_file_selection -= PAGE_SCROLL_NUM;
               if(current_file_in_scroll < PAGE_SCROLL_NUM)
               {
-                clear_screen(COLOR_BG);
+                clear_screen_menu(COLOR_BG);
                 current_file_scroll_value -= PAGE_SCROLL_NUM;
               }
               else
@@ -608,7 +609,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
               current_dir_selection -= PAGE_SCROLL_NUM;
               if(current_dir_in_scroll < PAGE_SCROLL_NUM)
               {
-                clear_screen(COLOR_BG);
+                clear_screen_menu(COLOR_BG);
                 current_dir_scroll_value -= PAGE_SCROLL_NUM;
               }
               else
@@ -716,7 +717,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
       scrollbar(2, 22, 7, 257, num_files, FILE_LIST_ROWS, current_file_scroll_value);
 
       flip_screen();
-      clear_screen(COLOR_BG);
+      clear_screen_menu(COLOR_BG);
     }
   }
     for(i = 0; i < num_files; i++)
@@ -734,7 +735,7 @@ s32 load_file(char **wildcards, char *result,char *default_dir_name)
 
   chdir(main_path);
 
-  clear_screen(COLOR_BG);
+  clear_screen_menu(COLOR_BG);
   flip_screen();
   return return_value;
 }
@@ -901,6 +902,14 @@ s32 load_config_file()
 --------------------------------------------------------*/
 u32 menu(u16 *original_screen)
 {
+  static u16 menu_fallback_snap[240 * 160];
+
+  if(original_screen == NULL)
+  {
+    copy_screen_snapshot_to(menu_fallback_snap);
+    original_screen = menu_fallback_snap;
+  }
+
   gui_action_type gui_action;
   u32 i;
   u32 repeat = 1;
@@ -915,7 +924,7 @@ u32 menu(u16 *original_screen)
   MENU_OPTION_TYPE *display_option;
   u32 current_option_num;
 
-  auto void choose_menu();
+  auto void choose_menu(MENU_TYPE *);
   auto void menu_exit();
   auto void menu_quit();
   auto void menu_load();
@@ -938,6 +947,9 @@ u32 menu(u16 *original_screen)
   auto void reload_cheats_page();
   auto void home_mode();
   auto void set_gamepad();
+  auto void menu_call_init(MENU_TYPE *);
+  auto void menu_call_action(MENU_TYPE *, MENU_OPTION_TYPE *);
+  auto void menu_call_passive(MENU_TYPE *, MENU_OPTION_TYPE *);
 #ifdef USE_ADHOC
   auto void adhoc_connect_menu();
   auto void adhoc_disconnect_menu();
@@ -1039,7 +1051,7 @@ u32 menu(u16 *original_screen)
       get_savestate_filename_noshot(g_savestate_slot_num, current_savestate_filename);
       save_state(current_savestate_filename, original_screen, g_savestate_slot_num);
       pause_sound(1);
-      clear_screen(COLOR_BG);
+      clear_screen_menu(COLOR_BG);
       blit_to_screen(original_screen, 240, 160, 230, 40);
     }
   }
@@ -1056,7 +1068,7 @@ u32 menu(u16 *original_screen)
       }
       else
       {
-        clear_screen(COLOR_BG);
+        clear_screen_menu(COLOR_BG);
         blit_to_screen(original_screen, 240, 160, 230, 40);
       }
     }
@@ -1075,7 +1087,7 @@ u32 menu(u16 *original_screen)
       }
       else
       {
-        clear_screen(COLOR_BG);
+        clear_screen_menu(COLOR_BG);
         choose_menu(current_menu);
       }
     }
@@ -1489,20 +1501,116 @@ u32 menu(u16 *original_screen)
 
   MAKE_MENU(main, submenu_main, NULL);
 
+  void menu_call_init(MENU_TYPE *target_menu)
+  {
+    if(target_menu == &main_menu)
+      submenu_main();
+    else if(target_menu == &savestate_menu)
+      submenu_savestate();
+    else if(target_menu == &graphics_sound_menu)
+      submenu_graphics_sound();
+    else if(target_menu == &cheats_menu)
+      submenu_cheats();
+    else if(target_menu == &misc_menu)
+      submenu_misc();
+    else if(target_menu == &gamepad_config_menu)
+      submenu_gamepad();
+    else if(target_menu == &analog_config_menu)
+      submenu_analog();
+#ifdef USE_ADHOC
+    else if(target_menu == &adhoc_menu)
+      submenu_adhoc();
+#endif
+  }
+
+  void menu_call_action(MENU_TYPE *target_menu, MENU_OPTION_TYPE *target_option)
+  {
+    u32 line = target_option->line_number;
+
+    if(target_menu == &main_menu)
+    {
+      switch(line)
+      {
+        case 0: menu_load(); break;
+        case 1: menu_exit(); break;
+        case 2: menu_restart(); break;
+        case 4: menu_load_state(); break;
+        case 5: menu_save_state(); break;
+        case 16: menu_quit(); break;
+      }
+    }
+    else if(target_menu == &graphics_sound_menu)
+    {
+      if(line == 12)
+        menu_save_ss();
+    }
+    else if(target_menu == &cheats_menu)
+    {
+      if(line == 13)
+        menu_load_cheat_file();
+    }
+    else if(target_menu == &savestate_menu)
+    {
+      switch(line)
+      {
+        case 6: menu_load_state(); break;
+        case 7: menu_save_state(); break;
+        case 9: menu_load_state_file(); break;
+      }
+    }
+#ifdef USE_ADHOC
+    else if(target_menu == &adhoc_menu)
+    {
+      if(line == 0)
+        adhoc_connect_menu();
+      else if(line == 1)
+        adhoc_disconnect_menu();
+    }
+#endif
+  }
+
+  void menu_call_passive(MENU_TYPE *target_menu, MENU_OPTION_TYPE *target_option)
+  {
+    u32 line = target_option->line_number;
+
+    if(target_menu == &cheats_menu && line == 11)
+      reload_cheats_page();
+    else if(target_menu == &misc_menu && line == 2)
+      home_mode();
+    else if(target_menu == &gamepad_config_menu)
+    {
+      if(line <= 11)
+        menu_fix_gamepad_help();
+      else if(line == 13)
+        set_gamepad();
+    }
+    else if(target_menu == &analog_config_menu)
+    {
+      if(line <= 3)
+        menu_fix_analog_help();
+      else if(line == 11)
+        set_gamepad();
+    }
+    else if(target_menu == &savestate_menu &&
+     ((line == 6) || (line == 7) || (line == 9) || (line == 11)))
+    {
+      menu_change_state();
+    }
+  }
+
   void choose_menu(MENU_TYPE *new_menu)
   {
     if(new_menu == NULL)
       new_menu = &main_menu;
 
-    clear_screen(COLOR_BG);
+    clear_screen_menu(COLOR_BG);
     blit_to_screen(original_screen, 240, 160, 230, 40);
 
     current_menu = new_menu;
 
     current_option = new_menu->options;
     current_option_num = 0;
-    if(current_menu->init_function)
-     current_menu->init_function();
+    menu_call_init(current_menu);
   }
 
   void reload_cheats_page()
@@ -1539,11 +1647,13 @@ u32 menu(u16 *original_screen)
 
   pause_sound(1);
 
-  button_up_wait();
+  /* Do not use button_up_wait(): mask 0x1F3F9 includes the default menu key
+   * (Triangle). User still holds it → tight 10µs spin pegs CPU → heat → power-off. */
+  button_up_wait_menu();
 
   video_resolution(FRAME_MENU);
 
-  clear_screen(COLOR_BG);
+  clear_screen_menu(COLOR_BG);
 
   // MENU時は222MHz
   set_cpu_clock(10);
@@ -1572,7 +1682,7 @@ u32 menu(u16 *original_screen)
 
   reload_cheats_page();
 
-  current_menu->init_function();
+  menu_call_init(current_menu);
 
   // メニューのメインループ
   while(repeat)
@@ -1650,7 +1760,7 @@ u32 menu(u16 *original_screen)
            current_option->num_options;
 
           if(current_option->passive_function)
-            current_option->passive_function();
+            menu_call_passive(current_menu, current_option);
         }
         break;
 
@@ -1668,7 +1778,7 @@ u32 menu(u16 *original_screen)
           *(current_option->current_option) = current_option_val;
 
           if(current_option->passive_function)
-            current_option->passive_function();
+            menu_call_passive(current_menu, current_option);
         }
         break;
 
@@ -1681,7 +1791,7 @@ u32 menu(u16 *original_screen)
 
       case CURSOR_SELECT:
         if(current_option->option_type & ACTION_TYPE)
-          current_option->action_function();
+          menu_call_action(current_menu, current_option);
 
         else if(current_option->option_type & SUBMENU_TYPE)
           choose_menu(current_option->sub_menu);
@@ -1694,18 +1804,17 @@ u32 menu(u16 *original_screen)
         ;
         break;
     }  // end switch
-    if(current_menu->init_function)
-     current_menu->init_function();
+    menu_call_init(current_menu);
     flip_screen();
-    clear_screen(COLOR_BG);
+    clear_screen_menu(COLOR_BG);
   }  // end while
 
 // menu終了時の処理
   button_up_wait();
 
-  clear_screen(0);
+  clear_screen_menu(0);
   flip_screen();
-  clear_screen(0);
+  clear_screen_menu(0);
   flip_screen();
 
   video_resolution(FRAME_GAME);
@@ -1716,6 +1825,38 @@ u32 menu(u16 *original_screen)
   real_frame_count = 0;
   virtual_frame_count = 0;
   return return_value;
+}
+
+static unsigned int menu_entry_button_wait_mask(void)
+{
+  unsigned int mask = 0x1F3F9u;
+  u32 i;
+
+  for(i = 0; i < MAX_GAMEPAD_CONFIG_MAP; i++)
+  {
+    if(gamepad_config_map[i] == BUTTON_ID_MENU)
+      mask &= ~(unsigned int)button_psp_mask_to_config[i];
+  }
+  return mask;
+}
+
+static void button_up_wait_menu(void)
+{
+  SceCtrlData ctrl_data;
+  const unsigned int mask = menu_entry_button_wait_mask();
+  unsigned int b;
+
+  sceKernelDelayThread(1000);
+  for(;;)
+  {
+    sceCtrlPeekBufferPositive(&ctrl_data, 1);
+    b = (unsigned int)ctrl_data.Buttons;
+    if(g_use_home == 1)
+      b |= (unsigned int)readHomeButton();
+    if((b & mask) == 0)
+      break;
+    sceKernelDelayThread(16666);
+  }
 }
 
 void button_up_wait()
@@ -2040,7 +2181,7 @@ static void get_savestate_snapshot(char *savestate_filename, u32 slot_num)
     static u64 savestate_time_flat;
     u64 local_time;
     int wday;
-    pspTime current_time;
+    ScePspDateTime current_time;
     static u32 valid_flag;
 
     if (g_default_save_dir != NULL) {
@@ -2098,7 +2239,7 @@ static void get_savestate_snapshot(char *savestate_filename, u32 slot_num)
         sceRtcSetTick(&current_time, &local_time);
         wday = sceRtcGetDayOfWeek(current_time.year, current_time.month, current_time.day);
         get_timestamp_string(savestate_timestamp_string, MSG_STATE_MENU_DATE_FMT_0, current_time.year, current_time.month, current_time.day,
-            wday, current_time.hour, current_time.minutes, current_time.seconds, 0);
+            wday, current_time.hour, current_time.minute, current_time.second, 0);
 
         savestate_timestamp_string[40] = 0;
 
@@ -2167,13 +2308,13 @@ static void print_status(u32 mode)
   char print_buffer_1[256];
   char print_buffer_2[256];
   char utf8[2048];
-  pspTime current_time;
+  ScePspDateTime current_time;
 
   sceRtcGetCurrentClockLocalTime(&current_time);
   int wday = sceRtcGetDayOfWeek(current_time.year, current_time.month , current_time.day);
 
   get_timestamp_string(print_buffer_1, MSG_MENU_DATE_FMT_0, current_time.year, current_time.month , current_time.day, wday,
-    current_time.hour, current_time.minutes, current_time.seconds, 0);
+    current_time.hour, current_time.minute, current_time.second, 0);
   sprintf(print_buffer_2,"%s%s", msg[MSG_MENU_DATE], print_buffer_1);
   PRINT_STRING_BG(print_buffer_2, COLOR_HELP_TEXT, COLOR_BG, 10, 0);
 
@@ -2227,7 +2368,7 @@ static void save_ss_bmp(u16 *image)
   char ss_filename[MAX_FILE];
   char timestamp[MAX_FILE];
   char save_ss_path[MAX_PATH];
-  pspTime current_time;
+  ScePspDateTime current_time;
   u8 *rgb_data = (u8 *)UNIVERSAL_VRAM_ADDR;
   u8 x,y;
   u16 col;
@@ -2238,7 +2379,7 @@ static void save_ss_bmp(u16 *image)
   change_ext(gamepak_filename, ss_filename, "_");
 
   get_timestamp_string(timestamp, MSG_SS_FMT_0, current_time.year, current_time.month, current_time.day, 7,
-    current_time.hour, current_time.minutes, current_time.seconds, current_time.microseconds);
+    current_time.hour, current_time.minute, current_time.second, current_time.microsecond / 1000);
 
   if (g_default_ss_dir != NULL) {
     sprintf(save_ss_path, "%s/%s%s.bmp", g_default_ss_dir, ss_filename, timestamp);

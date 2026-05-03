@@ -24,11 +24,14 @@
  ******************************************************************************/
 #include "common.h"
 
+char *msg[MSG_END];
+char msg_data[16 * 1024];
+
 PSP_MODULE_INFO("gpSP", PSP_MODULE_USER, VERSION_MAJOR, VERSION_MINOR);
 PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_USER|PSP_THREAD_ATTR_VFPU);
 PSP_MAIN_THREAD_PRIORITY(0x11);
 PSP_MAIN_THREAD_STACK_SIZE_KB(640);
-PSP_HEAP_SIZE_MAX();
+PSP_HEAP_SIZE_KB(-1);
 
 /******************************************************************************
  * グローバル変数の定義
@@ -634,10 +637,16 @@ u32 update_gba()
           sceKernelDelayThread(10);
 
           if(update_input() != 0)
-            continue;
+          {
+            vcount = 0;
+            goto finish_hblank_frame;
+          }
 
           if((power_flag == 1) && (into_suspend() != 0))
-            continue;
+          {
+            vcount = 0;
+            goto finish_hblank_frame;
+          }
 
           update_gbc_sound(cpu_ticks);
 
@@ -662,6 +671,7 @@ u32 update_gba()
             flip_screen();
         } //(vcount == 228)
 
+finish_hblank_frame:
         // vcountによる割込
         if(vcount == (dispstat >> 8))
         {
@@ -858,12 +868,21 @@ u32 file_length(const char *filename)
 
 void change_ext(char *src, char *buffer, char *extension)
 {
-  char *dot_position;
-  strcpy(buffer, src);
-  dot_position = strrchr(buffer, '.');
+  const char *dot_position;
+  u32 base_len;
 
-  if(dot_position)
-    strcpy(dot_position, extension);
+  if(src == NULL || buffer == NULL || extension == NULL)
+    return;
+
+  dot_position = strrchr(src, '.');
+  base_len = dot_position ? (u32)(dot_position - src) : (u32)strlen(src);
+
+  if(base_len >= MAX_FILE)
+    base_len = MAX_FILE - 1;
+
+  strncpy(buffer, src, base_len);
+  buffer[base_len] = '\0';
+  strncat(buffer, extension, MAX_FILE - 1 - strlen(buffer));
 }
 
 // type = READ / WRITE_MEM

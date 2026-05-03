@@ -203,7 +203,7 @@ gui_action_type get_gui_input()
 #define PSP_CTRL_ANALOG_LEFT  (1 << 30)
 #define PSP_CTRL_ANALOG_RIGHT (1 << 31)
 
-u32 button_psp_mask_to_config[] =
+u32 button_psp_mask_to_config[MAX_GAMEPAD_CONFIG_MAP] =
 {
   PSP_CTRL_TRIANGLE,
   PSP_CTRL_CROSS,
@@ -336,11 +336,19 @@ u32 update_input()
       case BUTTON_ID_SAVESTATE:
       {
         char current_savestate_filename[MAX_FILE];
+        static u16 savestate_snap_fb[240 * 160];
         u16 *current_screen = copy_screen();
+        int heap_snap = (current_screen != NULL);
+        if(!heap_snap)
+        {
+          copy_screen_snapshot_to(savestate_snap_fb);
+          current_screen = savestate_snap_fb;
+        }
         u32 ret;
         get_savestate_filename_noshot(g_savestate_slot_num, current_savestate_filename);
         ret = save_state(current_savestate_filename, current_screen, g_savestate_slot_num);
-        free(current_screen);
+        if(heap_snap)
+          free(current_screen);
         if (ret == 1)
           return 0;
         else
