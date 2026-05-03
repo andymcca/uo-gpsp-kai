@@ -3138,11 +3138,15 @@ block_lookup_address_body(dual);
   }                                                                           \
 }                                                                             \
 
-#define MAX_BLOCK_SIZE 8192
-#define MAX_EXITS      256
+/* ARM: match libretro gpsp cpu_threaded.c (1024/32); lower caps hit exit      \
+   limits in dense blocks. Thumb: original gpSP-kai sizing. */               \
+#define MAX_BLOCK_SIZE_arm   8192
+#define MAX_BLOCK_SIZE_thumb 8192
+#define MAX_EXITS_arm          256
+#define MAX_EXITS_thumb        256
 
-block_data_type block_data[MAX_BLOCK_SIZE];
-block_exit_type block_exits[MAX_EXITS];
+block_data_type block_data[MAX_BLOCK_SIZE_thumb];
+block_exit_type block_exits[MAX_EXITS_thumb];
 
 #define smc_write_arm_yes()                                                   \
   if(ADDRESS32(pc_address_block, (block_end_pc & 0x7FFC) - 0x8000) == 0x0000) \
@@ -3164,6 +3168,7 @@ block_exit_type block_exits[MAX_EXITS];
 #define scan_block(type, smc_write_op)                                        \
 {                                                                             \
   __label__ block_end;                                                        \
+  __label__ scan_append_##type##_##smc_write_op;                              \
   /* Find the end of the block */                                             \
   do                                                                          \
   {                                                                           \
@@ -3213,14 +3218,17 @@ block_exit_type block_exits[MAX_EXITS];
         if(i < 0)                                                             \
           break;                                                              \
       }                                                                       \
-      if(block_exit_position == MAX_EXITS)                                    \
-        break;                                                                \
+      /* load_opcode already advanced block_end_pc; append block_data before  \
+         leaving or translate_block desyncs vs while(pc != block_end_pc). */ \
+      if(block_exit_position == MAX_EXITS_##type)                             \
+        goto scan_append_##type##_##smc_write_op;                             \
     }                                                                         \
     else                                                                      \
     {                                                                         \
       type##_set_condition(condition);                                        \
     }                                                                         \
                                                                               \
+    scan_append_##type##_##smc_write_op:                                      \
     for(i = 0; i < translation_gate_targets; i++)                             \
     {                                                                         \
       if(block_end_pc == translation_gate_target_pc[i])                       \
@@ -3229,7 +3237,7 @@ block_exit_type block_exits[MAX_EXITS];
                                                                               \
     block_data[block_data_position].update_cycles = 0;                        \
     block_data_position++;                                                    \
-    if((block_data_position == MAX_BLOCK_SIZE) ||                             \
+    if((block_data_position == MAX_BLOCK_SIZE_##type) ||                      \
      (block_end_pc == 0x3007FF0) || (block_end_pc == 0x203FFF0))              \
     {                                                                         \
       break;                                                                  \
@@ -3269,7 +3277,7 @@ s32 translate_block_##type(u32 pc, TRANSLATION_REGION_TYPE                    \
   u8 *translation_cache_limit = NULL;                                         \
   s32 i;                                                                      \
   u32 flag_status;                                                            \
-  block_exit_type external_block_exits[MAX_EXITS];                            \
+  block_exit_type external_block_exits[MAX_EXITS_##type];                     \
                                                                               \
   generate_block_extra_vars_##type();                                         \
   type##_fix_pc();                                                            \
@@ -3383,8 +3391,11 @@ s32 translate_block_##type(u32 pc, TRANSLATION_REGION_TYPE                    \
     }                                                                         \
                                                                               \
     /* If the next instruction is a block entry point update the              \
-       cycle counter and update */                                            \
-    if(block_data[block_data_position].update_cycles == 1)                    \
+       cycle counter and update. Guard pc != block_end_pc so we do not read   \
+       block_data[block_data_position] past the last row after the final      \
+       increment (same as libretro gpsp cpu_threaded.c). */                   \
+    if((pc != block_end_pc) &&                                                \
+     (block_data[block_data_position].update_cycles == 1))                    \
     {                                                                         \
       generate_cycle_update();                                                \
     }                                                                         \
