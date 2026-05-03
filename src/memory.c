@@ -1973,7 +1973,7 @@ void write_cart_io(u32 address, u32 value)
                     // 0x65
                   case RTC_COMMAND_READ_TIME_FULL:
                     {
-                      pspTime current_time;
+                      ScePspDateTime current_time;
                       sceRtcGetCurrentClockLocalTime(&current_time);
 
                       int day_of_week = sceRtcGetDayOfWeek(current_time.year, current_time.month , current_time.day);
@@ -1989,8 +1989,8 @@ void write_cart_io(u32 address, u32 value)
                       rtc_data[2] = encode_bcd(current_time.day);
                       rtc_data[3] = encode_bcd(day_of_week);
                       rtc_data[4] = encode_bcd(current_time.hour);
-                      rtc_data[5] = encode_bcd(current_time.minutes);
-                      rtc_data[6] = encode_bcd(current_time.seconds);
+                      rtc_data[5] = encode_bcd(current_time.minute);
+                      rtc_data[6] = encode_bcd(current_time.second);
                       break;
                     }
 
@@ -1998,14 +1998,14 @@ void write_cart_io(u32 address, u32 value)
                     // 0x67
                   case RTC_COMMAND_READ_TIME:
                     {
-                      pspTime current_time;
+                      ScePspDateTime current_time;
                       sceRtcGetCurrentClockLocalTime(&current_time);
 
                       rtc_state = RTC_OUTPUT_DATA;
                       rtc_data_bytes = 3;
                       rtc_data[0] = encode_bcd(current_time.hour);
-                      rtc_data[1] = encode_bcd(current_time.minutes);
-                      rtc_data[2] = encode_bcd(current_time.seconds);
+                      rtc_data[1] = encode_bcd(current_time.minute);
+                      rtc_data[2] = encode_bcd(current_time.second);
                       break;
                     }
                   }
@@ -3849,7 +3849,7 @@ u32 save_state(char *savestate_filename, u16 *screen_capture, u32 slot_num)
   g_state_buffer_ptr = savestate_write_buffer;
 
   u64 current_time;
-  pspTime current_time_fix; // time関数が年月日を返さないので調整用
+  ScePspDateTime current_time_fix; // time関数が年月日を返さないので調整用
   init_progress(9, msg[MSG_SAVE_STATE]);
 
   // 識別子/バージョンの保存

@@ -12,7 +12,7 @@ dvemgr:
 	make -C ./prx/dvemgr
 
 main:
-	./counter.pl
+	@awk '/^BUILD_COUNT=/ {gsub(/\r/,""); sub(/^BUILD_COUNT=[[:space:]]*/, ""); c=$$0+1} END{print "BUILD_COUNT= " c}' build_count.inc > build_count.inc.new && mv build_count.inc.new build_count.inc
 	make -C ./gpsp
 
 homehookprx:

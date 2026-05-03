@@ -400,10 +400,55 @@ void clear_screen(u16 color)
   sceGuSync(0, 0);
 }
 
+void clear_screen_menu(u16 color)
+{
+  u32 color32;
+  color32 = (((color & 0x1F) * 8) << 0) | ((((color >> 5) & 0x1F) * 8) << 8) | ((((color >> 10) & 0x1F) * 8) << 16) | (0xFF << 24);
+
+  sceGuStart(GU_DIRECT, display_list);
+  sceGuDrawBufferList(GU_PSM_5551, (void *)screen_offset_address, screen_pitch);
+  sceGuScissor(0, 0, current_parameter->texture_size.width, current_parameter->texture_size.height);
+  // クリアする色の設定 ※パレット設定にかかわらず32bitで指定する
+  sceGuClearColor(color32);
+  sceGuClear(GU_COLOR_BUFFER_BIT);
+  sceGuDrawBufferList(GU_PSM_5551, (void *)0, FRAME_LINE_SIZE);
+  sceGuScissor(current_parameter->view.x, current_parameter->view.y, current_parameter->view.width, current_parameter->view.height);
+  sceGuFinish();
+  sceGuSync(0, 0);
+}
+
+void copy_screen_snapshot_to(u16 *dst)
+{
+  const u32 w = 240;
+  const u32 h = 160;
+  u32 pitch = screen_pitch;
+  const u16 *base;
+  u32 y, x;
+
+  if(dst == NULL || pitch < w)
+    return;
+
+  /* Menu / savestate call this while the GE may still be sampling the GBA
+   * texture for display. Wait before CPU reads VRAM (matches real-PSP stability;
+   * uncached memcpy from 0x44xxxxxx was added later for emulators only). */
+  sceGuSync(0, 0);
+
+  base = screen_address;
+  for(y = 0; y < h; y++)
+  {
+    const u16 *src = base + y * pitch;
+    u16 *d = dst + y * w;
+    for(x = 0; x < w; x++)
+      d[x] = src[x];
+  }
+}
+
 u16 *copy_screen()
 {
   u16 *copy = malloc(240 * 160 * 2);
-  memcpy(copy, screen_address, 240 * 160 * 2);
+  if(copy == NULL)
+    return NULL;
+  copy_screen_snapshot_to(copy);
   return copy;
 }
 
