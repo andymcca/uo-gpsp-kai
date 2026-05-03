@@ -43,7 +43,7 @@ CFLAGS          += -O3 -DPSP_BUILD -G0 -funsigned-char
 CFLAGS          += -Wall
 #CFLAGS          += -W -Wno-sign-compare
 #CFLAGS          += -Wshadow -Wbad-function-cast -Wconversion -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wstrict-prototypes -Wnested-externs -Wredundant-decls 
-CFLAGS          +=  -funsigned-char -ffast-math -fforce-addr -fmerge-all-constants -funsafe-loop-optimizations -ftree-loop-linear
+CFLAGS          +=  -funsigned-char -ffast-math -fforce-addr -fmerge-all-constants
 
 CFLAGS          += -DVERSION_MAJOR=${VERSION_MAJOR}
 CFLAGS          += -DVERSION_MINOR=${VERSION_MINOR}
@@ -77,7 +77,7 @@ EXTRA_TARGETS   = EBOOT.PBP
 
 LIBS            += -lpspgu -lpsprtc -lpspaudio -lz -lpsppower -lpspkubridge -lpspgum -lpspsystemctrl_user -lm
 
-ifdef USE_ADHOC
+ifeq ($(USE_ADHOC), 1)
 LIBS            += -lpspnet -lpspwlan -lpspnet_adhoc -lpspnet_adhocctl -lpspnet_adhocmatching
 endif
 
