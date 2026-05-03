@@ -104,7 +104,7 @@ UI_COMMON_FILE  = ${SRC_DIR}fbm_print.h \
 
 main.o			: ${COMMON_FILE} ${UI_COMMON_FILE} ${SRC_DIR}main.c
 cpu_common.o	: ${COMMON_FILE} ${SRC_DIR}cpu_common.c
-cpu_asm.o		: ${COMMON_FILE} ${SRC_DIR}cpu_asm.c
+cpu_asm.o		: ${COMMON_FILE} ${SRC_DIR}cpu_asm.c ${SRC_DIR}mips_emit.h
 cpu_c.o			: ${COMMON_FILE} ${SRC_DIR}cpu_c.c
 video.o			: ${COMMON_FILE} ${SRC_DIR}video.c 
 gu.o			: ${COMMON_FILE} ${SRC_DIR}dvemgr.h ${SRC_DIR}gu.c 
